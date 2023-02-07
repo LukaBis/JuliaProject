@@ -1,0 +1,25 @@
+using Plots
+
+include("input_data.jl")
+include("./allFormulas/ae_formula.jl")
+include("./allFormulas/be_formula.jl")
+include("./allFormulas/C_formula.jl")
+include("./allFormulas/E_formula.jl")
+include("./allFormulas/f_formula.jl")
+include("./allFormulas/Fnm_formula.jl")
+include("./allFormulas/knm_formula.jl")
+include("./allFormulas/L_formula.jl")
+include("./allFormulas/mn_formula.jl")
+include("./allFormulas/xa_formula.jl")
+include("./allFormulas/xb_formula.jl")
+include("./allFormulas/Yab_formula.jl")
+include("./allFormulas/Yeq_formula.jl")
+include("./allFormulas/Zin_formula.jl")
+
+println("Loading...")
+include("task1.jl")
+println("Task 1 done")
+
+println("Loading...")
+include("task2.jl")
+println("Task 2 done")
