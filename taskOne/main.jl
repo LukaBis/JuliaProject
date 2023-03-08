@@ -4,99 +4,64 @@ using SymPy
 using Roots
 using PrettyTables
 
-include("calculate_ae.jl")
-include("calculate_be.jl")
-include("calculate_fnm.jl")
-include("calculate_knm.jl")
-include("calculate_wr.jl")
-include("calculate_xa.jl")
-include("calculate_xb.jl")
+knm, n = symbols("knm n")
 
-knm, a, b, h, er, n, m, ae, be = symbols("knm a b h er n m ae be")
-
-a_value = 2.2
-b_value = 3.1
-h_value = 1.8
-er_value = 3
+a_value = 0.013
+b_value = 0.023
+h_value = 0.001576
+er_value = 2.52
 n_value = 2
-m_value = 3
+m_value = 1
 
 # create an expression
 x = symbols("x")
 besseljFunction(x) = besselj(n, x);
 besselyFunction(x) = bessely(n, x);
 
-expression = diff(besselyFunction(knm * ae), knm) * diff(besseljFunction(knm * be), knm) - diff(besseljFunction(knm * ae), knm) * diff(besselyFunction(knm * be), knm)
-
 # calculate all necessary values
-xa_value = calculateXa(a_value, h_value, er_value)
-xb_value = calculateXb(b_value, h_value, er_value)
-ae_value = calculateAe(a_value, h_value, xa_value, er_value)
-be_value = calculateBe(b_value, h_value, xb_value, er_value)
+xa_value = log(a_value/2 * h_value) + 1.41 * er_value + 1.77 + h_value/a_value*(0.268 * er_value + 1.65)
+xb_value = log(b_value/2 * h_value) + 1.41*er_value + 1.77 + h_value/b_value*(0.268 * er_value + 1.65)
+ae_value = a_value * (1 - 2 * h_value * xa_value / (pi * er_value * a_value))^0.5
+be_value = b_value * (1 + 2 * h_value * xb_value / (pi*er_value * b_value))^0.5
 
-# substitute symbols with new values
-newExpression = expression.subs([(ae, ae_value), (be, be_value), (n, n_value)])
+expression = diff(besselyFunction(knm * ae_value), knm) * diff(besseljFunction(knm * be_value), knm) - diff(besseljFunction(knm * ae_value), knm) * diff(besselyFunction(knm * be_value), knm)
+expression = expression.subs(n, n_value)
 
-function expression_func(x)
-    return newExpression.subs(knm, x).evalf()
+# This function calculates value of a function for a given x value that gets substituted with knm
+function calculate_expression(x)
+    return expression.subs(knm, x).evalf()
 end
 
-# this takes only imaginary part, we use it later to find zero of a function
-# where this imaginary part is equal to zero that is where the zero point is
-function expression_func_imag(x)
-    return imag(newExpression.subs(knm, x).evalf())
+# find bracketing interval
+zero_approximation = 1e-10
+start_interval = zero_approximation
+end_interval = zero_approximation
+
+functionValueAtStart = calculate_expression(start_interval)
+functionValueAtEnd = calculate_expression(end_interval)
+
+println("Finding bracketing interval...")
+
+while sign(functionValueAtStart) == sign(functionValueAtEnd)
+    global end_interval
+    global functionValueAtEnd
+    end_interval += 0.1
+    functionValueAtEnd = calculate_expression(end_interval)
 end
 
-# 1)
-root = fzero(expression_func_imag, (-50, -48))
-print("knm = ")
-println(root)
+# make bracketing interval smaller
+start_interval = end_interval - 1
+bracketing_interval = (start_interval, end_interval)
 
+# 1) 
+root = fzero(calculate_expression, bracketing_interval)
+println("knm = $root")
 
 # 2)
-knm_value = root;
+knm_value = root
 u0_value = 4*pi*10^(-7)
 e0_value = 8.854 * 10^(-12)
 
-fnm = calculateFnm(knm_value, u0_value, e0_value, er_value)
-print("fnm = ")
-println(fnm)
+fnm_value = knm_value / (2*pi * sqrt(u0_value * e0_value * er_value))
 
-# 3)
-
-println("Loading table ...")
-
-# this time there is no N substitution
-thirdExpression = expression.subs([(ae, ae_value), (be, be_value)])
-templateExpression = thirdExpression
-
-function insertNinExpression(nParam)
-    return templateExpression.subs(n, nParam)
-end
-
-function third_expression_func(knmParam)
-    return imag(thirdExpression.subs(knm, knmParam).evalf())
-end
-
-# Load data in array
-
-tableValues = Array{Sym, 2}(undef, 6, 6)
-newThirdExpression = thirdExpression
-
-for n = 0:5
-    for m = 1:6
-        if m == 1
-            tableValues[n + 1, m] = n
-        else
-            global thirdExpression
-            global knm_value
-            thirdExpression = insertNinExpression(n)
-            knm_value = fzero(third_expression_func, (-50, -48))
-            fnm_value = calculateFnm(knm_value, u0_value, e0_value, er_value)
-            tableValues[n + 1, m] = fnm_value
-        end
-    end
-end
-
-# Display table using data from array
-pretty_table(tableValues; header = ["", 1, 2, 3, 4, 5])
+println("fnm = $fnm_value")
